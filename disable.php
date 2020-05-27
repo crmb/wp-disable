@@ -1,7 +1,7 @@
 <?php
 /*
 WP unbloat.
-Corentin Vigouroux - 2019.02
+Corentin Vigouroux - 2020.02
 
 Configure disable_template_redirect to your needs
 
@@ -15,8 +15,16 @@ add_filter('xmlrpc_enabled', '__return_false');
 remove_action( 'wp_head', 'rsd_link' );
 remove_action( 'wp_head', 'wlwmanifest_link');
 remove_action( 'wp_head', 'wp_generator');
-/* Désactiver le shortlink en header */
+/* DÃ©sactiver le shortlink en header */
 remove_action( 'wp_head', 'wp_shortlink_wp_head', 10, 0);
+
+/* DÃ©sactiver canonical */
+remove_action('wp_head', 'rel_canonical');
+
+/* retirer rel='prev'/rel='next' */
+
+remove_action('wp_head', 'adjacent_posts_rel_link_wp_head');
+
 
 // Remove the REST API lines from the HTML Header
 remove_action( 'wp_head', 'rest_output_link_wp_head', 10 );
@@ -24,6 +32,7 @@ remove_action( 'wp_head', 'wp_oembed_add_discovery_links', 10 );
 remove_action( 'template_redirect', 'rest_output_link_header', 11 ); // dans header apache
 
 # https://developer.wordpress.org/rest-api/using-the-rest-api/frequently-asked-questions/  
+/*
 add_filter('rest_authentication_errors', 'secure_api');
 function secure_api( $result ){
 	if ( ! empty($result) ) {
@@ -34,7 +43,7 @@ function secure_api( $result ){
 	}
 	return $result;
 }
-
+*/
 
 
 /* Kill attachment, search, author, daily archive pages */
@@ -67,7 +76,7 @@ function disable_template_redirect(){
 }
 
 
-/* Désactiver RSS */
+/* DÃ©sactiver RSS */
 add_action('do_feed', 'disabler_kill_rss');
 add_action('do_feed_rdf', 'disabler_kill_rss');
 add_action('do_feed_rss', 'disabler_kill_rss');
@@ -108,7 +117,7 @@ function disable_emojis_tinymce( $plugins ) {
 }
 
 
-/* Désactiver les smiley standard */
+/* DÃ©sactiver les smiley standard */
 # https://core.trac.wordpress.org/ticket/34773
 add_filter( 'option_use_smilies', '__return_false' );
 
@@ -135,3 +144,31 @@ function remove_customize_page(){
 }
 add_action( 'admin_menu', 'remove_customize_page');
 
+# https://wpreset.com/remove-default-wordpress-rewrite-rules-permalinks/
+# est-ce que Ã§a ralenti plus qu'autre chose ?
+function clean_rewrite_rules( $rules ) {
+  foreach ( $rules as $rule => $rewrite ) {
+    if ( preg_match( '%(feed|attachment|archives|trackback|comment|author|year|search|category|embed|tag|register|page/)%', $rule ) ) {
+      unset( $rules[$rule] );
+    }
+  }
+      
+  return $rules;
+}
+add_filter( 'rewrite_rules_array', 'clean_rewrite_rules' );
+
+# https://fr.wordpress.org/plugins/disable-search/
+function wpb_filter_query( $query, $error = true ) {
+	if(is_search() && is_main_query() && !is_admin()){
+		unset( $_GET['s'] );
+		unset( $_POST['s'] );
+		unset( $_REQUEST['s'] );
+		unset( $query->query['s'] );
+		$query->set( 's', '' );
+		$query->is_search = false;
+		$query->set_404();
+		status_header( 404 );
+		//nocache_headers();
+	}
+}
+add_action( 'parse_query', 'wpb_filter_query' );
